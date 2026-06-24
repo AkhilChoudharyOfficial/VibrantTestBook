@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile in the application",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique identifier matching Firebase Auth UID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the user"
+        },
+        "mobile": {
+          "type": "string",
+          "description": "Mobile contact number"
+        },
+        "rollNumber": {
+          "type": "string",
+          "description": "Roll number assigned to student"
+        },
+        "centreName": {
+          "type": "string",
+          "description": "Assigned coaching centre location"
+        },
+        "batchNumber": {
+          "type": "string",
+          "description": "Coaching batch name/number"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "instructor", "admin"],
+          "description": "Assigned access control role"
+        },
+        "isPremium": {
+          "type": "boolean",
+          "description": "True if user purchased test series pass"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "isPremium"]
+    },
+    "TestAttempt": {
+      "title": "TestAttempt",
+      "description": "Records student answers and performance on a practice test",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the attempt"
+        },
+        "testId": {
+          "type": "string",
+          "description": "Identifier of the test"
+        },
+        "testTitle": {
+          "type": "string",
+          "description": "Name/Title of the test"
+        },
+        "examCategory": {
+          "type": "string",
+          "description": "The course category (e.g., SSC, Railway)"
+        },
+        "userUid": {
+          "type": "string",
+          "description": "The student's UID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Cached student name"
+        },
+        "rollNumber": {
+          "type": "string",
+          "description": "Student roll number"
+        },
+        "score": {
+          "type": "integer",
+          "description": "Marks secured"
+        },
+        "totalMarks": {
+          "type": "integer",
+          "description": "Total test marks"
+        },
+        "correctAnswers": {
+          "type": "integer",
+          "description": "Number of correct questions"
+        },
+        "incorrectAnswers": {
+          "type": "integer",
+          "description": "Number of incorrect questions"
+        },
+        "unattemptedAnswers": {
+          "type": "integer",
+          "description": "Number of skipped questions"
+        },
+        "timeSpentSeconds": {
+          "type": "integer",
+          "description": "Time spent in seconds"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when attempt was submitted"
+        }
+      },
+      "required": ["id", "testId", "testTitle", "examCategory", "userUid", "userName", "rollNumber", "score", "totalMarks", "completedAt"]
+    },
+    "LiveDoubt": {
+      "title": "LiveDoubt",
+      "description": "Student questions and faculty replies",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the doubt"
+        },
+        "studentUid": {
+          "type": "string",
+          "description": "The UID of the student who posted"
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Name of the student"
+        },
+        "studentRoll": {
+          "type": "string",
+          "description": "Roll number of the student"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject category (e.g. Maths, Reasoning)"
+        },
+        "message": {
+          "type": "string",
+          "description": "The doubt query text"
+        },
+        "reply": {
+          "type": "string",
+          "description": "The response given by instructor"
+        },
+        "repliedBy": {
+          "type": "string",
+          "description": "The instructor's name"
+        },
+        "repliedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the reply was given"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "resolved"],
+          "description": "Current resolution status"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the doubt was created"
+        }
+      },
+      "required": ["id", "studentUid", "studentName", "studentRoll", "subject", "message", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Individual user profiles indexed by UID"
+    },
+    "/test_attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/TestAttempt" },
+      "description": "Completed student test attempts"
+    },
+    "/live_doubts/{doubtId}": {
+      "schema": { "$ref": "#/entities/LiveDoubt" },
+      "description": "Live student queries and tutor answers"
+    }
+  }
+}

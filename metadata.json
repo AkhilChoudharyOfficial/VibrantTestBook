@@ -1,0 +1,6 @@
+{
+  "name": "Vibrant Test Book",
+  "description": "The official premium test series, mock exams, and study materials platform for Vibrant Career Institute, Sikar. Designed for SSC, Delhi Police, and state-level exam aspirants.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Security Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isStaff() {
+      return isSignedIn() && (getUserRole() == 'admin' || getUserRole() == 'instructor');
+    }
+
+    // 3. User Profiles Collection
+    match /users/{userId} {
+      allow get: if isSignedIn() && (isOwner(userId) || isStaff());
+      allow list: if isSignedIn() && isStaff();
+      
+      // Creating or updating user profile documents
+      allow create, update: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+    }
+
+    function isValidUser(user) {
+      return user.keys().hasAll(['uid', 'name', 'email', 'role', 'isPremium']) &&
+        user.keys().size() <= 10 &&
+        user.uid is string && user.uid == request.auth.uid &&
+        user.name is string && user.name.size() <= 200 &&
+        user.email is string && user.email.size() <= 200 &&
+        // Users registering initially must have role 'student'. Updates can only preserve existing roles unless done by staff
+        (request.method == 'create' ? (user.role == 'student') : (user.role == resource.data.role || isStaff())) &&
+        user.isPremium is bool;
+    }
+
+    // 4. Test Attempts Collection
+    match /test_attempts/{attemptId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.userUid) || isStaff());
+      allow list: if isSignedIn() && (isOwner(resource.data.userUid) || isStaff());
+      
+      // Only the authenticated student can save their own score. Must not allow updates or deletions.
+      allow create: if isSignedIn() && isOwner(incoming().userUid) && isValidAttempt(incoming());
+      allow update, delete: if false;
+    }
+
+    function isValidAttempt(attempt) {
+      return attempt.keys().hasAll(['id', 'testId', 'testTitle', 'examCategory', 'userUid', 'userName', 'rollNumber', 'score', 'totalMarks', 'completedAt']) &&
+        attempt.id is string && isValidId(attempt.id) &&
+        attempt.testId is string && attempt.testId.size() <= 128 &&
+        attempt.testTitle is string && attempt.testTitle.size() <= 500 &&
+        attempt.examCategory is string && attempt.examCategory.size() <= 128 &&
+        attempt.userUid == request.auth.uid &&
+        attempt.userName is string && attempt.userName.size() <= 200 &&
+        attempt.rollNumber is string && attempt.rollNumber.size() <= 100 &&
+        attempt.score is int &&
+        attempt.totalMarks is int &&
+        (!attempt.keys().contains('timeSpentSeconds') || attempt.timeSpentSeconds is int);
+    }
+
+    // 5. Live Doubts Collection
+    match /live_doubts/{doubtId} {
+      allow get: if isSignedIn() && (isOwner(resource.data.studentUid) || isStaff());
+      allow list: if isSignedIn() && (isOwner(resource.data.studentUid) || isStaff());
+      
+      // Creating a student academic doubt
+      allow create: if isSignedIn() && isOwner(incoming().studentUid) && isValidDoubt(incoming());
+      
+      // Only instructors and admins can reply to academic queries or update status
+      allow update: if isSignedIn() && isStaff() && isValidDoubtUpdate(incoming());
+      allow delete: if false;
+    }
+
+    function isValidDoubt(doubt) {
+      return doubt.keys().hasAll(['id', 'studentUid', 'studentName', 'studentRoll', 'subject', 'message', 'status', 'createdAt']) &&
+        doubt.id is string && isValidId(doubt.id) &&
+        doubt.studentUid == request.auth.uid &&
+        doubt.studentName is string && doubt.studentName.size() <= 200 &&
+        doubt.studentRoll is string && doubt.studentRoll.size() <= 100 &&
+        doubt.subject is string && doubt.subject.size() <= 200 &&
+        doubt.message is string && doubt.message.size() <= 2000 &&
+        doubt.status == 'open';
+    }
+
+    function isValidDoubtUpdate(doubt) {
+      return doubt.status in ['open', 'resolved'] &&
+        doubt.studentUid == resource.data.studentUid &&
+        doubt.message == resource.data.message &&
+        (!doubt.keys().contains('reply') || (doubt.reply is string && doubt.reply.size() <= 5000));
+    }
+  }
+}
